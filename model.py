@@ -69,14 +69,13 @@ class slitherBot:
 
 	def build_vision_model(self):
 		self.state_input = Input(shape=self.input_shape)
-		x = Conv2D(96, (4, 4))(self.state_input)
+		x = Conv2D( 64, (4, 4))(self.state_input)
 		x = bnormed_relu(x)
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
-		x = Conv2D(96, (5, 5))(x)
+		x = Conv2D(64, (4, 4))(x)
 		x = bnormed_relu(x)
 		x = MaxPooling2D(pool_size=(3, 3))(x)
-
 
 		output = Flatten()(x)		
 		self.vision_model = output
