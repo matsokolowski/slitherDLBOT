@@ -76,7 +76,7 @@ class environment:
 
             window.sl_accel = () => {
                 setAcceleration(1);
-                sl_acctime = 1.0;
+                sl_acctime = 0.5;
             } ;
 			window.a = null;
 			window.getscore = () => {

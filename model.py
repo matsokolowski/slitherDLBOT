@@ -69,13 +69,16 @@ class slitherBot:
 
 	def build_vision_model(self):
 		self.state_input = Input(shape=self.input_shape)
-		x = Conv2D( 64, (4, 4))(self.state_input)
+		x = Conv2D(12, (4, 4))(self.state_input)
 		x = bnormed_relu(x)
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
-		x = Conv2D(64, (4, 4))(x)
+		x = Conv2D(64, (3, 3))(x)
 		x = bnormed_relu(x)
 		x = MaxPooling2D(pool_size=(3, 3))(x)
+
+		x = Conv2D(48, (3, 3))(x)
+		x = bnormed_relu(x)
 
 		output = Flatten()(x)		
 		self.vision_model = output
@@ -117,7 +120,7 @@ class slitherBot:
 
 		I = self.vision_model
 
-		d = Dense(512, activation='relu')(I)
+		d = Dense(384, activation='relu')(I)
 		#d = Dropout(0.2)(d)
 		V = define_multilayer_critic(d)
 
@@ -286,7 +289,7 @@ if __name__ == "__main__":
 
 		if len(states) < delay : continue
 
-		states[-3][2] = reward
+		states[-2][2] = reward
 		states[-2][3] = state
 
 		if '0' not in states[0]:
