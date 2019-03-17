@@ -72,15 +72,17 @@ class slitherBot:
 )
 		x = Conv2D(16, (2, 2))(self.state_input)
 		x = bnormed_relu(x)
-		x = Conv2D(48, (5, 5))(x)
+
+		x = Conv2D(64, (3, 3))(x)
 		x = bnormed_relu(x)
 
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
-		x = Conv2D(48, (4, 4))(x)
+		x = Conv2D(24, (3, 3))(x)
 		x = bnormed_relu(x)
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
+		
 		output = Flatten()(x)		
 		self.vision_model = output
 
