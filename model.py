@@ -68,17 +68,18 @@ class slitherBot:
 		return np.argmax(act_values[0])
 
 	def build_vision_model(self):
-		self.state_input = Input(shape=self.input_shape)
-		x = Conv2D(12, (4, 4))(self.state_input)
+		self.state_input = Input(shape=self.input_shape
+)
+		x = Conv2D(16, (2, 2))(self.state_input)
 		x = bnormed_relu(x)
+		x = Conv2D(48, (5, 5))(x)
+		x = bnormed_relu(x)
+
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
-		x = Conv2D(64, (3, 3))(x)
+		x = Conv2D(48, (4, 4))(x)
 		x = bnormed_relu(x)
 		x = MaxPooling2D(pool_size=(3, 3))(x)
-
-		x = Conv2D(48, (3, 3))(x)
-		x = bnormed_relu(x)
 
 		output = Flatten()(x)		
 		self.vision_model = output
@@ -303,6 +304,13 @@ if __name__ == "__main__":
 			c += 1
 """
 		if rr == 0:
+			#roll death back
+			for x in range(10):
+				agent.memory.pop()
+			states.clear()
+			agent.memory[-1] = agent.memory[-1][:2] + (rr,) + agent.memory[-1][3:]
+			
+			# train the netwoek
 			agent.prioratized_replay()
 			print ("starting", agent.epsilon)
 			e.start()
