@@ -57,8 +57,8 @@ class slitherBot:
 			if self.m_i > self.m_T: 
 				self.m_l = random.randrange(self.action_size)
 				self.m_i = 0
-				r = 100
-			#	if self.m_l != 1: r = 5
+				if self.m_l == 8: r = 5
+				else: r = 100
 				self.m_T = random.sample(range(r),1)[0]
 			else: self.m_i += 1
 			return self.m_l
@@ -73,15 +73,18 @@ class slitherBot:
 		x = Conv2D(16, (2, 2))(self.state_input)
 		x = bnormed_relu(x)
 
-		x = Conv2D(64, (3, 3))(x)
+		x = Conv2D(32, (3, 3))(x)
 		x = bnormed_relu(x)
 
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
-		x = Conv2D(24, (3, 3))(x)
+		x = Conv2D(48, (3, 3))(x)
 		x = bnormed_relu(x)
+
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
+		x = Conv2D(16, (3, 3))(x)
+		x = bnormed_relu(x)
 		
 		output = Flatten()(x)		
 		self.vision_model = output
@@ -234,6 +237,7 @@ class slitherBot:
 
 			s = np.squeeze(states,axis=1)
 
+			#self.Q1.fit(s, targets_f , batch_size = 100, epochs = 2,shuffle=True,sample_weight = (diff + 1))
 			self.Q1.fit(s, targets_f , batch_size = 100, epochs = 2,shuffle=True)
 
 
