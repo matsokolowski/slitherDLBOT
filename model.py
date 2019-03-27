@@ -96,7 +96,8 @@ class slitherBot:
 			x = Dense(256, activation='relu')(x)
 
 			critic = [
-				Dense(64, activation='relu'),
+				Dense(72, activation='relu'),
+				Dense(32, activation='relu'),
 				Dense(1, activation='linear'),
 			]
 
@@ -132,8 +133,8 @@ class slitherBot:
 
 		def flat(d,V):
 			d = Dense(256, activation='relu')(Lambda(K.concatenate)([d,V]))
-			#d = Dense(128, activation='relu')( d )
-			d = Dense(48, activation='relu',kernel_constraint = max_norm(0.005,axis=-1), bias_constraint = max_norm(3))( d ) 
+			d = Dense(48, activation='relu')( d )
+			d = Dense(24, activation='relu',kernel_constraint = max_norm(0.005,axis=-1), bias_constraint = max_norm(3))( d ) 
 
 			return Dense(self.action_size, activation='linear', kernel_constraint = max_norm(0.001,axis=-1))(d)
 
@@ -296,7 +297,7 @@ if __name__ == "__main__":
 
 		if len(states) < delay : continue
 
-		states[-2][2] = reward
+		states[-3][2] = reward
 		states[-2][3] = state
 
 		if '0' not in states[0]:
