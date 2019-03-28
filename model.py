@@ -30,7 +30,7 @@ class slitherBot:
 		self.epsilon_min = 0.015
 		self.epsilon_decay = 0.96
 		#self.learning_rate = 0.00025
-		self.learning_rate = 0.00001
+		self.learning_rate = 0.000001
 		self.action_size = 9
 		self.fitqueue = []
 		
@@ -239,7 +239,7 @@ class slitherBot:
 			s = np.squeeze(states,axis=1)
 
 			#self.Q1.fit(s, targets_f , batch_size = 100, epochs = 2,shuffle=True,sample_weight = (diff + 1))
-			self.Q1.fit(s, targets_f , batch_size = 100, epochs = 2,shuffle=True)
+			self.Q1.fit(s, targets_f , batch_size = 300, epochs = 6,shuffle=True)
 
 
 		if self.epsilon > self.epsilon_min:
