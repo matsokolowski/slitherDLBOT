@@ -80,10 +80,14 @@ class slitherBot:
 
 		x = Conv2D(48, (3, 3))(x)
 		x = bnormed_relu(x)
+		x = Conv2D(32, (3, 3))(x)
+		x = bnormed_relu(x)
 
 		x = MaxPooling2D(pool_size=(3, 3))(x)
 
-		x = Conv2D(16, (3, 3))(x)
+		x = Conv2D(32, (3, 3))(x)
+		x = bnormed_relu(x)
+		x = Conv2D(32, (3, 3))(x)
 		x = bnormed_relu(x)
 		
 		output = Flatten()(x)		
@@ -93,11 +97,11 @@ class slitherBot:
 
 		def define_multilayer_critic(x):
 			#with souble critic; 128 - 1st; 32 - 2ed good performance
-			x = Dense(256, activation='relu')(x)
+			x = Dense(128, activation='relu')(x)
 
 			critic = [
 				Dense(72, activation='relu'),
-				Dense(32, activation='relu'),
+				Dense(24, activation='relu'),
 				Dense(1, activation='linear'),
 			]
 
@@ -127,16 +131,16 @@ class slitherBot:
 
 		I = self.vision_model
 
-		d = Dense(384, activation='relu')(I)
+		d = Dense(512, activation='relu')(I)
 		#d = Dropout(0.2)(d)
 		V = define_multilayer_critic(d)
 
 		def flat(d,V):
-			d = Dense(256, activation='relu')(Lambda(K.concatenate)([d,V]))
-			d = Dense(48, activation='relu')( d )
-			d = Dense(24, activation='relu',kernel_constraint = max_norm(0.005,axis=-1), bias_constraint = max_norm(3))( d ) 
+			d = Dense(128, activation='relu')(Lambda(K.concatenate)([d,V]))
+			d = Dense(32, activation='relu')( d )
+			d = Dense(24, activation='relu',kernel_constraint = max_norm(0.0005,axis=-1), bias_constraint = max_norm(3))( d ) 
 
-			return Dense(self.action_size, activation='linear', kernel_constraint = max_norm(0.001,axis=-1))(d)
+			return Dense(self.action_size, activation='linear', kernel_constraint = max_norm(0.0001,axis=-1))(d)
 
 		A = flat(d,V)
 
@@ -238,8 +242,8 @@ class slitherBot:
 
 			s = np.squeeze(states,axis=1)
 
-			#self.Q1.fit(s, targets_f , batch_size = 100, epochs = 2,shuffle=True,sample_weight = (diff + 1))
-			self.Q1.fit(s, targets_f , batch_size = 300, epochs = 6,shuffle=True)
+			#self.Q1.fit(s, targets_f , batch_size = 200, epochs = 4,shuffle=True,sample_weight = (diff + 1))
+			self.Q1.fit(s, targets_f , batch_size = 200, epochs = 4,shuffle=True)
 
 
 		if self.epsilon > self.epsilon_min:
