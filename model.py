@@ -73,6 +73,13 @@ class slitherBot:
 		x = Conv2D(16, (2, 2))(self.state_input)
 		x = bnormed_relu(x)
 
+		x = Conv2D(24, (3, 3))(x)
+		x = bnormed_relu(x)
+
+		x = MaxPooling2D(pool_size=(3, 3))(x)
+
+		x = Conv2D(32, (3, 3))(x)
+		x = bnormed_relu(x)
 		x = Conv2D(32, (3, 3))(x)
 		x = bnormed_relu(x)
 
@@ -80,14 +87,7 @@ class slitherBot:
 
 		x = Conv2D(48, (3, 3))(x)
 		x = bnormed_relu(x)
-		x = Conv2D(32, (3, 3))(x)
-		x = bnormed_relu(x)
-
-		x = MaxPooling2D(pool_size=(3, 3))(x)
-
-		x = Conv2D(32, (3, 3))(x)
-		x = bnormed_relu(x)
-		x = Conv2D(32, (3, 3))(x)
+		x = Conv2D(48, (3, 3))(x)
 		x = bnormed_relu(x)
 		
 		output = Flatten()(x)		
@@ -138,14 +138,16 @@ class slitherBot:
 		def flat(d,V):
 			d = Dense(128, activation='relu')(Lambda(K.concatenate)([d,V]))
 			d = Dense(32, activation='relu')( d )
-			d = Dense(24, activation='relu',kernel_constraint = max_norm(0.0005,axis=-1), bias_constraint = max_norm(3))( d ) 
+			d = Dense(24, activation='relu')( d ) 
 
-			return Dense(self.action_size, activation='linear', kernel_constraint = max_norm(0.0001,axis=-1))(d)
+			return Dense(self.action_size, activation='linear')(d)
 
 		A = flat(d,V)
 
 
-		outp = lambda x: x[0] - K.mean(x[0]) + x[1] #+ x[2]
+		def outp(x):
+			u  = (x[0] - K.mean(x[0]))
+			return u * x[1] + K.sign(u) * x[1] #+ x[2]
 		out = Lambda(outp, output_shape = (self.action_size,))([A, V])
 		m = Model(input=self.state_input ,output = out)
 		m.summary()
