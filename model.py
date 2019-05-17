@@ -23,7 +23,7 @@ class slitherBot:
 
 		self.memory = deque(maxlen=3072)
 
-		self.input_shape=(96,96,1)
+		self.input_shape=(48,48,1)
 		#self.gamma = 0.8    # discount rate
 		self.gamma = 0.75    # discount rat
 		self.epsilon = 0.66  # exploration rate
@@ -34,7 +34,7 @@ class slitherBot:
 		self.action_size = 9
 		self.fitqueue = []
 		
-		self.dual = False
+		self.dual = True
 
 		self.m_i = 0
 		self.m_l = 0
@@ -68,27 +68,20 @@ class slitherBot:
 		return np.argmax(act_values[0])
 
 	def build_vision_model(self):
-		self.state_input = Input(shape=self.input_shape
-)
-		x = Conv2D(16, (2, 2))(self.state_input)
-		x = bnormed_relu(x)
+		self.state_input = Input(shape=self.input_shape)
 
+		x = Conv2D(24, (3, 3))(self.state_input)
 		x = Conv2D(24, (3, 3))(x)
 		x = bnormed_relu(x)
 
-		x = MaxPooling2D(pool_size=(3, 3))(x)
+		x = MaxPooling2D(pool_size=(2, 2))(x)
 
 		x = Conv2D(32, (3, 3))(x)
 		x = bnormed_relu(x)
+
+		x = MaxPooling2D(pool_size=(2, 2))(x)
 		x = Conv2D(32, (3, 3))(x)
-		x = bnormed_relu(x)
 
-		x = MaxPooling2D(pool_size=(3, 3))(x)
-
-		x = Conv2D(48, (3, 3))(x)
-		x = bnormed_relu(x)
-		x = Conv2D(48, (3, 3))(x)
-		x = bnormed_relu(x)
 		
 		output = Flatten()(x)		
 		self.vision_model = output
@@ -97,11 +90,10 @@ class slitherBot:
 
 		def define_multilayer_critic(x):
 			#with souble critic; 128 - 1st; 32 - 2ed good performance
-			x = Dense(128, activation='relu')(x)
+			x = Dense(96, activation='relu')(x)
 
 			critic = [
-				Dense(72, activation='relu'),
-				Dense(24, activation='relu'),
+				Dense(48, activation='relu'),
 				Dense(1, activation='linear'),
 			]
 
@@ -131,13 +123,12 @@ class slitherBot:
 
 		I = self.vision_model
 
-		d = Dense(512, activation='relu')(I)
+		d = Dense(384, activation='relu')(I)
 		#d = Dropout(0.2)(d)
 		V = define_multilayer_critic(d)
 
 		def flat(d,V):
-			d = Dense(128, activation='relu')(Lambda(K.concatenate)([d,V]))
-			d = Dense(32, activation='relu')( d )
+			d = Dense(48, activation='relu')(Lambda(K.concatenate)([d,V]))
 			d = Dense(24, activation='relu')( d ) 
 
 			return Dense(self.action_size, activation='linear')(d)
@@ -147,7 +138,8 @@ class slitherBot:
 
 		def outp(x):
 			u  = (x[0] - K.mean(x[0]))
-			return u * x[1] + K.sign(u) * x[1] #+ x[2]
+			#return x[0] * x[1] * K.sign(x[0])
+			return u + x[1] #+ x[2]
 		out = Lambda(outp, output_shape = (self.action_size,))([A, V])
 		m = Model(input=self.state_input ,output = out)
 		m.summary()
@@ -203,7 +195,7 @@ class slitherBot:
 		if self.epsilon > self.epsilon_min:
 			self.epsilon *= self.epsilon_decay
 
-	def prioratized_replay(self,size = 512, ntimes = 7):
+	def prioratized_replay(self,size = 512, ntimes = 10):
 		try: states, actions, rewards, next_states, dones = \
 			[ np.array(x) for x in zip(*self.memory) ]
 		except: return
@@ -245,7 +237,7 @@ class slitherBot:
 			s = np.squeeze(states,axis=1)
 
 			#self.Q1.fit(s, targets_f , batch_size = 200, epochs = 4,shuffle=True,sample_weight = (diff + 1))
-			self.Q1.fit(s, targets_f , batch_size = 200, epochs = 4,shuffle=True)
+			self.Q1.fit(s, targets_f , batch_size = 200, epochs = 1,shuffle=True)
 
 
 		if self.epsilon > self.epsilon_min:
@@ -309,13 +301,14 @@ if __name__ == "__main__":
 		if '0' not in states[0]:
 			agent.remember( *states[0] )
 
-		"""if c > 150:
-			agent.replay(50,True)
+		"""
+		if c > 150:
+			agent.replay(75,True)
 			c = 0
-		else:
+		elif dt < 0.07:
 			agent.fitq()
 			c += 1
-"""
+		"""
 		if rr == 0:
 			#roll death back
 			for x in range(10):
@@ -324,6 +317,7 @@ if __name__ == "__main__":
 			agent.memory[-1] = agent.memory[-1][:2] + (rr,) + agent.memory[-1][3:]
 			
 			# train the netwoek
+			if agent.dual: agent.fitQ2()
 			agent.prioratized_replay()
 			print ("starting", agent.epsilon)
 			e.start()
