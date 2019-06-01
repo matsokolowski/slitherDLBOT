@@ -7,11 +7,13 @@ from collections import deque
 from keras.optimizers import Adam
 from threading import Thread
 from keras.constraints import max_norm
+from keras.models import load_model
 
 import numpy as np
 import random
 import time
-
+import os
+import pickle
 from env import environment
 
 si =  lambda x: x/(1+abs(x))
@@ -21,12 +23,14 @@ bnormed_relu = lambda x: Activation("relu")(BatchNormalization()(x))
 class slitherBot:
 	def __init__(self):
 
-		self.memory = deque(maxlen=3072)
+		self.memory = deque(maxlen=1800)
+		self.recordIntoFiles = True;
+		self.recordAnchor = np.random.rand(100)
 
 		self.input_shape=(48,48,1)
 		#self.gamma = 0.8    # discount rate
 		self.gamma = 0.75    # discount rat
-		self.epsilon = 0.66  # exploration rate
+		self.epsilon = 0.33  # exploration rate
 		self.epsilon_min = 0.015
 		self.epsilon_decay = 0.96
 		#self.learning_rate = 0.00025
@@ -34,7 +38,7 @@ class slitherBot:
 		self.action_size = 9
 		self.fitqueue = []
 		
-		self.dual = True
+		self.dual = False
 
 		self.m_i = 0
 		self.m_l = 0
@@ -43,9 +47,15 @@ class slitherBot:
 		self.fq = 0
 
 		self.build_vision_model()
+		self.Q1 = self.build_duelingQ_model()
 
+		if os.path.isfile("Q.weights"):
+			self.Q1.set_weights( pickle.load(open("Q.weights","rb")) )
+			print("model successfuly loaded.")
+		else:
+			print("loading model failed.")
+			self.save()
 
-		self.Q1 = self.build_duelingQ_model() 
 		if self.dual:
 			self.Q2 = self.build_duelingQ_model()
 			self.fitQ2 = lambda: self.Q2.set_weights(self.Q1.get_weights())
@@ -68,10 +78,9 @@ class slitherBot:
 		return np.argmax(act_values[0])
 
 	def build_vision_model(self):
-		self.state_input = Input(shape=self.input_shape)
+		self.state_input = Input(shape=self.input_shape,name="input")
 
-		x = Conv2D(24, (3, 3))(self.state_input)
-		x = Conv2D(24, (3, 3))(x)
+		x = Conv2D(48, (3, 3))(self.state_input)
 		x = bnormed_relu(x)
 
 		x = MaxPooling2D(pool_size=(2, 2))(x)
@@ -81,10 +90,15 @@ class slitherBot:
 
 		x = MaxPooling2D(pool_size=(2, 2))(x)
 		x = Conv2D(32, (3, 3))(x)
+		x = bnormed_relu(x)
 
 		
 		output = Flatten()(x)		
 		self.vision_model = output
+
+	def save(self):
+		#self.vision_model.save('vision.h5')
+		pickle.dump(self.Q1.get_weights(),open("Q.weights","wb"))
 
 	def build_duelingQ_model(self):
 
@@ -94,6 +108,7 @@ class slitherBot:
 
 			critic = [
 				Dense(48, activation='relu'),
+				Dense(24, activation='relu'),
 				Dense(1, activation='linear'),
 			]
 
@@ -128,7 +143,8 @@ class slitherBot:
 		V = define_multilayer_critic(d)
 
 		def flat(d,V):
-			d = Dense(48, activation='relu')(Lambda(K.concatenate)([d,V]))
+			d = Dense(64, activation='relu')(Lambda(K.concatenate)([d,V]))
+			d = Dense(48, activation='relu')( d ) 
 			d = Dense(24, activation='relu')( d ) 
 
 			return Dense(self.action_size, activation='linear')(d)
@@ -196,9 +212,15 @@ class slitherBot:
 			self.epsilon *= self.epsilon_decay
 
 	def prioratized_replay(self,size = 512, ntimes = 10):
-		try: states, actions, rewards, next_states, dones = \
-			[ np.array(x) for x in zip(*self.memory) ]
+		try:
+			pack = [ np.array(x) for x in zip(*self.memory) ]
+			states, actions, rewards, next_states, dones = pack
 		except: return
+
+		if self.recordIntoFiles and ( self.recordAnchor.tolist() not in states.tolist() ):
+			pickle.dump(pack,open( "recorded/%s.pk" % time.time(),"wb"))
+			self.recordAnchor = states[-1]
+
 		chunk = 512
 		#next time try batch 50
 
@@ -228,7 +250,7 @@ class slitherBot:
 			max_in_next = np.amax(predictions_next,axis=1)
 
 			# Calculating the targets
-			targets = (max_in_next * 0.95 + rewards)
+			targets = (max_in_next * 0.97 + rewards)
 			targets = np.where(dones,targets,rewards).reshape(len(a),1)
 			places = np.tile(np.arange(self.action_size),(len(a),1)) - actions.reshape(len(a),1) == 0
 			targets_f = np.where(places, targets, predictions,)
@@ -251,17 +273,19 @@ if __name__ == "__main__":
 	e = environment()
 	agent = slitherBot()
 	e.start()
-
+	e.points = 0
 
 	reward = 0
 	r = rr = 1
 	c = 0
 	state = e._frame()
 	
-	delay = 3
+	delay = 5
 	states = deque(maxlen=delay)
 
-	while not int(e.score()): time.sleep(1)
+	while not int(e.points):
+		e.action(1)
+		time.sleep(1)
 
 	t1 = t = time.time()
 	dt= 0 
@@ -295,10 +319,13 @@ if __name__ == "__main__":
 
 		if len(states) < delay : continue
 
-		states[-3][2] = reward
+		states[-4][2] = reward
 		states[-2][3] = state
 
 		if '0' not in states[0]:
+			if states[0][1] == 8:
+				states[0][2] -= 0.166
+				print("punishment")
 			agent.remember( *states[0] )
 
 		"""
@@ -311,16 +338,20 @@ if __name__ == "__main__":
 		"""
 		if rr == 0:
 			#roll death back
-			for x in range(10):
-				agent.memory.pop()
+			try:
+				for x in range(10):
+					agent.memory.pop()
+			except: continue
 			states.clear()
 			agent.memory[-1] = agent.memory[-1][:2] + (rr,) + agent.memory[-1][3:]
 			
 			# train the netwoek
 			if agent.dual: agent.fitQ2()
 			agent.prioratized_replay()
+			agent.save()
 			print ("starting", agent.epsilon)
 			e.start()
+			e.points = 0
 			while not int(e.score()): time.sleep(1)
 			rr = 1
 

@@ -4,9 +4,10 @@ import psutil
 import subprocess
 import os
 import math
-
+import subprocess as sp
 from collections import deque
 import time
+import numpy as np
 """
 def funcdelay(cnframes,nfps):
 	def F(func):
@@ -46,16 +47,17 @@ def getXid(c):
 
 class environment:
 	def __init__(self):
-		self.fshape=(96,96,1)
+		self.fshape=(48,48,1)
 
+		self.fpower = np.prod(self.fshape)
 		self.driver = webdriver.Chrome()
-
+		self.points = 0;
 		self.xid = getXid(self.driver)
 		print(self.xid)
 		if not self.xid :
 			raise ("cannot get a xid")
 		
-		self.driver.set_window_size(800, 800)
+		self.driver.set_window_size(600, 600)
 		self.driver.get("http://www.slither.io")
 		self.xpath = xpath = self.driver.find_element_by_xpath
 		self.xp_scoreframe = "/html/body/div[13]/span[1]/span[2]"
@@ -80,29 +82,57 @@ class environment:
             } ;
 			window.a = null;
 			window.getscore = () => {
-				if (document.body.children[1].style["display"] == "inline")
+				try {
+					if (document.body && document.body.children && document.body.children[1].style["display"] == "inline")
+						return "0";
+					if ( !a || !('children' in a) )
+						a = document.querySelector('body > div:nth-child(18)');
+					if ( a && 'children' in a )
+						return a.children[0].children[1].innerText;
 					return "0";
-				if (!a)
-					a = document.querySelector('body > div:nth-child(18)');
-				if (a) return a.children[0].children[1].innerText;
+				} catch(error) { console.error(error); return '0'; }
 			}
 		""")
 		self.__start_capture()
 	
 	def __start_capture(self):
-		self.ffmpeg = cv2.VideoCapture(
-			"""ximagesrc xid={0} ! videoconvert ! videocrop top=130  ! video/x-raw,framerate=15/1 ! videoscale ! video/x-raw,width=96,height=96,format=GRAY8 ! appsink""".format(self.xid), cv2.CAP_GSTREAMER)
+			self.ffmpeg = cv2.VideoCapture(
+				"""ximagesrc xid={0} ! videoconvert ! videocrop top=130  ! video/x-raw,framerate=15/1 ! videoscale ! video/x-raw,width=48,height=48,format=GRAY8 ! appsink""".format(self.xid), cv2.CAP_GSTREAMER)
+		#ximagesrc major opcode of failed request 73 (x_getimage)
+		#env = os.environ
+		#env["GST_GL_XINITTHREADS"] = "1"
+		#print("Selenium window is found. {0}".format(self.xid))
+		#gststr = """gst-launch-1.0 ximagesrc xid={0} ! videoconvert ! videocrop top=130  ! video/x-raw,framerate=15/1 ! videoscale ! video/x-raw,width=48,height=48,format=GRAY8 ! filesink location=/dev/stdout""".format(self.xid).split(" ");
+		#print( " ".join(gststr))
+		#self.ffmpeg = sp.Popen(gststr,stdout=sp.PIPE, bufsize=10**8, env=env )
 
 	def __mousemove(self,*c):
-		self.driver.execute_script("xm={0}; ym={1};".format(*c))
+		print("sendingmove ",end="")
+		self.points = self.driver.execute_script("xm={0}; ym={1}; return window.getscore();".format(*c))
+		print("done.")
+
+	"""def _frame(self):
+		while True:
+			r,f =  self.ffmpeg.read()
+			if r:
+				cv2.imshow("slither-prev",f)
+				return f.reshape((1,)+self.fshape)"""
 
 	def _frame(self):
 		while True:
 			r,f =  self.ffmpeg.read()
 			if r:
 				cv2.imshow("slither-prev",f)
-				return f.reshape((1,)+self.fshape)
-
+			return f.reshape((1,)+self.fshape)
+		#while True:
+		#	print ("getting frame ", end='\r')
+		#	f = self.ffmpeg.stdout.read(self.fpower)
+		#	f = np.frombuffer(f,dtype='uint8')[-self.fpower:]
+		#	if len(f) < self.fpower: continue
+		#	f.shape = ((1,)+self.fshape)
+		#	cv2.imshow("slither-prev",f[0])
+		#	return f
+	
 	def is_alive(self):
 		return "display: none;" in self.loginframe.get_attribute("style")
 
@@ -116,6 +146,7 @@ class environment:
 
 
 	def score(self):
+		if int(self.points) > 0: return self.points
 		try:
 			return self.driver.execute_script("return window.getscore()") or "10"
 		except: return "10"
@@ -123,8 +154,7 @@ class environment:
 		#	time.sleep(0.05)
 		#	h = self.score()
 		#	if h != "": return int(h)
-
-		return 0;
+		#return 0;
 
 	def start(self):
 		self.startbutton.click()
