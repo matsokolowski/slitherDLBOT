@@ -30,11 +30,11 @@ class slitherBot:
 		self.input_shape=(48,48,1)
 		#self.gamma = 0.8    # discount rate
 		self.gamma = 0.75    # discount rat
-		self.epsilon = 0.33  # exploration rate
+		self.epsilon = 0.7  # exploration rate
 		self.epsilon_min = 0.015
 		self.epsilon_decay = 0.96
 		#self.learning_rate = 0.00025
-		self.learning_rate = 0.000001
+		self.learning_rate = 0.00001
 		self.action_size = 9
 		self.fitqueue = []
 		
@@ -80,7 +80,9 @@ class slitherBot:
 	def build_vision_model(self):
 		self.state_input = Input(shape=self.input_shape,name="input")
 
-		x = Conv2D(48, (3, 3))(self.state_input)
+		x = Conv2D(32, (4, 4))(self.state_input)
+		x = Conv2D(32, (4, 4))(x)
+
 		x = bnormed_relu(x)
 
 		x = MaxPooling2D(pool_size=(2, 2))(x)
@@ -89,8 +91,6 @@ class slitherBot:
 		x = bnormed_relu(x)
 
 		x = MaxPooling2D(pool_size=(2, 2))(x)
-		x = Conv2D(32, (3, 3))(x)
-		x = bnormed_relu(x)
 
 		
 		output = Flatten()(x)		
@@ -143,8 +143,8 @@ class slitherBot:
 		V = define_multilayer_critic(d)
 
 		def flat(d,V):
-			d = Dense(64, activation='relu')(Lambda(K.concatenate)([d,V]))
-			d = Dense(48, activation='relu')( d ) 
+			d = Dense(96, activation='relu')(Lambda(K.concatenate)([d,V]))
+			d = Dense(32, activation='relu')( d ) 
 			d = Dense(24, activation='relu')( d ) 
 
 			return Dense(self.action_size, activation='linear')(d)
@@ -213,8 +213,8 @@ class slitherBot:
 
 	def prioratized_replay(self,size = 512, ntimes = 10):
 		try:
-			pack = [ np.array(x) for x in zip(*self.memory) ]
-			states, actions, rewards, next_states, dones = pack
+			states, actions, rewards, next_states, dones = pack = \
+				[ np.array(x) for x in zip(*self.memory) ]
 		except: return
 
 		if self.recordIntoFiles and ( self.recordAnchor.tolist() not in states.tolist() ):
