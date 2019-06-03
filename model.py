@@ -29,8 +29,8 @@ class slitherBot:
 
 		self.input_shape=(48,48,1)
 		#self.gamma = 0.8    # discount rate
-		self.gamma = 0.75    # discount rat
-		self.epsilon = 0.7  # exploration rate
+		self.gamma = 0.8    # discount rat
+		self.epsilon = 0.8  # exploration rate
 		self.epsilon_min = 0.015
 		self.epsilon_decay = 0.96
 		#self.learning_rate = 0.00025
@@ -80,18 +80,16 @@ class slitherBot:
 	def build_vision_model(self):
 		self.state_input = Input(shape=self.input_shape,name="input")
 
-		x = Conv2D(32, (4, 4))(self.state_input)
-		x = Conv2D(32, (4, 4))(x)
-
-		x = bnormed_relu(x)
+		x = Conv2D(32, (3, 3), activation="relu")(self.state_input)
+		x = Conv2D(32, (4, 4), activation="relu")(x)
 
 		x = MaxPooling2D(pool_size=(2, 2))(x)
 
-		x = Conv2D(32, (3, 3))(x)
-		x = bnormed_relu(x)
+		x = Conv2D(32, (3, 3), activation="relu")(x)
+		x = Conv2D(32, (4, 4), activation="relu")(x)
 
 		x = MaxPooling2D(pool_size=(2, 2))(x)
-
+		#x = Conv2D(32, (3, 3), activation="relu")(x)
 		
 		output = Flatten()(x)		
 		self.vision_model = output
@@ -211,10 +209,22 @@ class slitherBot:
 		if self.epsilon > self.epsilon_min:
 			self.epsilon *= self.epsilon_decay
 
-	def prioratized_replay(self,size = 512, ntimes = 10):
+	def replay_recorded(self):
+		irc = self.recordIntoFiles
+		self.recordIntoFiles = False
+		for dr, dirs, files in os.walk("./recorded/"): 
+			for f in files[::-1]:
+				print(f)
+				f = open(dr + f,"rb")
+				pack = pickle.load(f)
+				self.prioratized_replay( 512, 2, pack )
+				f.close()
+		self.recordIntoFiles = irc
+
+	def prioratized_replay(self,size = 512, ntimes = 10, pack = False):
 		try:
 			states, actions, rewards, next_states, dones = pack = \
-				[ np.array(x) for x in zip(*self.memory) ]
+				pack or [ np.array(x) for x in zip(*self.memory) ]
 		except: return
 
 		if self.recordIntoFiles and ( self.recordAnchor.tolist() not in states.tolist() ):
@@ -272,6 +282,10 @@ if __name__ == "__main__":
 
 	e = environment()
 	agent = slitherBot()
+	##replaying recorded
+	for f in range(3): agent.replay_recorded()
+
+	## starting webpage and game
 	e.start()
 	e.points = 0
 
@@ -283,76 +297,77 @@ if __name__ == "__main__":
 	delay = 5
 	states = deque(maxlen=delay)
 
-	while not int(e.points):
-		e.action(1)
-		time.sleep(1)
-
-	t1 = t = time.time()
-	dt= 0 
-
 	while True:
+		retries = 0
+		while not int(e.points):
+			e.action(1)
+			time.sleep(1)
+			if retries > 10:
+				e.initpage()
+				e.start()
+				retries = 0
+			retries +=1
 
-		t1 = time.time()
-		dt = t1 - t
-		haste  = abs(dt - 0.066)
-		if haste < 0 :  
-			time.sleep( haste )
-			t1 += haste
+		t1 = t = time.time()
+		dt = 0 
+
+		while True:
+
+			t1 = time.time()
+			dt = t1 - t
+			haste  = abs(dt - 0.066)
+			if haste < 0 :  
+				time.sleep( haste )
+				t1 += haste
+				
+			action = agent.act(state)
+
+			e.action(action)
+			#time.sleep(0.06)
+			state = e._frame()
+
+
+			rr =  float(e.score())
+			reward = si(rr - r)
+			r = rr
+
+			print("action", action , reward, dt,rr)
 			
-		action = agent.act(state)
-
-		e.action(action)
-		#time.sleep(0.06)
-		state = e._frame()
+			t = t1
 
 
-		rr =  float(e.score())
-		reward = si(rr - r)
-		r = rr
+			states.append( [state, action, '0', '0', rr > 0, ] )
 
-		print("action", action , reward, dt,rr)
-		
-		t = t1
+			if len(states) < delay : continue
 
+			states[-4][2] = reward
+			states[-2][3] = state
 
-		states.append( [state, action, '0', '0', rr > 0, ] )
+			if '0' not in states[0]:
+				if states[0][1] == 8:
+					states[0][2] -= 0.166
+					print("punishment")
+				agent.remember( *states[0] )
 
-		if len(states) < delay : continue
+			if rr == 0:
+				#roll death back
+				try:
+					for x in range(10):
+						agent.memory.pop()
+				except: continue
+				states.clear()
+				agent.memory[-1] = agent.memory[-1][:2] + (rr,) + agent.memory[-1][3:]
+				
+				# train the netwoek
+				if agent.dual: agent.fitQ2()
+				agent.prioratized_replay()
+				agent.save()
 
-		states[-4][2] = reward
-		states[-2][3] = state
-
-		if '0' not in states[0]:
-			if states[0][1] == 8:
-				states[0][2] -= 0.166
-				print("punishment")
-			agent.remember( *states[0] )
-
-		"""
-		if c > 150:
-			agent.replay(75,True)
-			c = 0
-		elif dt < 0.07:
-			agent.fitq()
-			c += 1
-		"""
-		if rr == 0:
-			#roll death back
-			try:
-				for x in range(10):
-					agent.memory.pop()
-			except: continue
-			states.clear()
-			agent.memory[-1] = agent.memory[-1][:2] + (rr,) + agent.memory[-1][3:]
-			
-			# train the netwoek
-			if agent.dual: agent.fitQ2()
-			agent.prioratized_replay()
-			agent.save()
-			print ("starting", agent.epsilon)
-			e.start()
-			e.points = 0
-			while not int(e.score()): time.sleep(1)
-			rr = 1
+				# starting the bot
+				print ("starting", agent.epsilon)
+				e.start()
+				e.points = 0
+				rr = 1
+				break
 
 

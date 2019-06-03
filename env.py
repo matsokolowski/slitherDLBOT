@@ -56,16 +56,22 @@ class environment:
 		print(self.xid)
 		if not self.xid :
 			raise ("cannot get a xid")
-		
+
+		cv2.startWindowThread()
+		cv2.namedWindow("slither-prev")
 		self.driver.set_window_size(600, 600)
+		self.initpage()
+		self.__start_capture()
+
+	def initpage(self):
+
 		self.driver.get("http://www.slither.io")
 		self.xpath = xpath = self.driver.find_element_by_xpath
 		self.xp_scoreframe = "/html/body/div[13]/span[1]/span[2]"
 		self.startbutton = xpath('//*[@id="playh"]/div/div/div[3]')
 		self.loginframe = xpath('//*[@id="login"]')
 		self.scoreframe = None
-		cv2.startWindowThread()
-		cv2.namedWindow("slither-prev")
+
 		self.driver.execute_script("""
             window.sl_acctime = 0;
             setInterval(()=>{
@@ -93,8 +99,7 @@ class environment:
 				} catch(error) { console.error(error); return '0'; }
 			}
 		""")
-		self.__start_capture()
-	
+
 	def __start_capture(self):
 			self.ffmpeg = cv2.VideoCapture(
 				"""ximagesrc xid={0} ! videoconvert ! videocrop top=130  ! video/x-raw,framerate=15/1 ! videoscale ! video/x-raw,width=48,height=48,format=GRAY8 ! appsink""".format(self.xid), cv2.CAP_GSTREAMER)
