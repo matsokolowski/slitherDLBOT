@@ -27,14 +27,14 @@ class slitherBot:
 		self.recordIntoFiles = True;
 		self.recordAnchor = np.random.rand(100)
 
-		self.input_shape=(48,48,1)
+		self.input_shape=(64,64,1)
 		#self.gamma = 0.8    # discount rate
 		self.gamma = 0.8    # discount rat
-		self.epsilon = 0.8  # exploration rate
+		self.epsilon = 0.1  # exploration rate
 		self.epsilon_min = 0.015
 		self.epsilon_decay = 0.96
 		#self.learning_rate = 0.00025
-		self.learning_rate = 0.00001
+		self.learning_rate = 0.000001
 		self.action_size = 9
 		self.fitqueue = []
 		
@@ -80,17 +80,16 @@ class slitherBot:
 	def build_vision_model(self):
 		self.state_input = Input(shape=self.input_shape,name="input")
 
-		x = Conv2D(32, (3, 3), activation="relu")(self.state_input)
-		x = Conv2D(32, (4, 4), activation="relu")(x)
-
+		x = Conv2D(32, (4, 4), activation="relu")(self.state_input)
 		x = MaxPooling2D(pool_size=(2, 2))(x)
 
-		x = Conv2D(32, (3, 3), activation="relu")(x)
 		x = Conv2D(32, (4, 4), activation="relu")(x)
-
+		x = Conv2D(48, (4, 4), activation="relu")(x)
 		x = MaxPooling2D(pool_size=(2, 2))(x)
-		#x = Conv2D(32, (3, 3), activation="relu")(x)
-		
+
+		x = Conv2D(48, (4, 4), activation="relu")(x)
+		x = MaxPooling2D(pool_size=(2, 2))(x)
+
 		output = Flatten()(x)		
 		self.vision_model = output
 
@@ -160,7 +159,6 @@ class slitherBot:
 		m.compile(loss='mse',optimizer=Adam(lr=self.learning_rate))
 
 		return m
-
 
 		
 	def fitq(self):

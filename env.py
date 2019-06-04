@@ -47,7 +47,7 @@ def getXid(c):
 
 class environment:
 	def __init__(self):
-		self.fshape=(48,48,1)
+		self.fshape=(64,64,1)
 
 		self.fpower = np.prod(self.fshape)
 		self.driver = webdriver.Chrome()
@@ -102,7 +102,7 @@ class environment:
 
 	def __start_capture(self):
 			self.ffmpeg = cv2.VideoCapture(
-				"""ximagesrc xid={0} ! videoconvert ! videocrop top=130  ! video/x-raw,framerate=15/1 ! videoscale ! video/x-raw,width=48,height=48,format=GRAY8 ! appsink""".format(self.xid), cv2.CAP_GSTREAMER)
+				"""ximagesrc xid={0} ! videoconvert ! videocrop top=130  ! video/x-raw,framerate=15/1 ! videoscale ! video/x-raw,width=64,height=64,format=GRAY8 ! appsink""".format(self.xid), cv2.CAP_GSTREAMER)
 		#ximagesrc major opcode of failed request 73 (x_getimage)
 		#env = os.environ
 		#env["GST_GL_XINITTHREADS"] = "1"
