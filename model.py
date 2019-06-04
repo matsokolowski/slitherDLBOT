@@ -84,10 +84,10 @@ class slitherBot:
 		x = MaxPooling2D(pool_size=(2, 2))(x)
 
 		x = Conv2D(32, (4, 4), activation="relu")(x)
-		x = Conv2D(48, (4, 4), activation="relu")(x)
+		x = Conv2D(64, (4, 4), activation="relu")(x)
 		x = MaxPooling2D(pool_size=(2, 2))(x)
 
-		x = Conv2D(48, (4, 4), activation="relu")(x)
+		x = Conv2D(64, (4, 4), activation="relu")(x)
 		x = MaxPooling2D(pool_size=(2, 2))(x)
 
 		output = Flatten()(x)		
@@ -143,6 +143,7 @@ class slitherBot:
 			d = Dense(96, activation='relu')(Lambda(K.concatenate)([d,V]))
 			d = Dense(32, activation='relu')( d ) 
 			d = Dense(24, activation='relu')( d ) 
+			d = Dense(16, activation='relu')( d ) 
 
 			return Dense(self.action_size, activation='linear')(d)
 
