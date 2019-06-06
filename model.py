@@ -105,6 +105,7 @@ class slitherBot:
 
 			critic = [
 				Dense(48, activation='relu'),
+				#Dense(32, activation='relu'),
 				Dense(24, activation='relu'),
 				Dense(1, activation='linear'),
 			]
@@ -151,9 +152,9 @@ class slitherBot:
 
 
 		def outp(x):
-			u  = (x[0] - K.mean(x[0]))
+			u  = (x[1] - K.mean(x[1]))
 			#return x[0] * x[1] * K.sign(x[0])
-			return u + x[1] #+ x[2]
+			return u + x[0] #+ x[2]
 		out = Lambda(outp, output_shape = (self.action_size,))([A, V])
 		m = Model(input=self.state_input ,output = out)
 		m.summary()
