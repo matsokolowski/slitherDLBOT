@@ -101,12 +101,13 @@ class slitherBot:
 
 		def define_multilayer_critic(x):
 			#with souble critic; 128 - 1st; 32 - 2ed good performance
-			x = Dense(96, activation='relu')(x)
+			#x = Dense(96, activation='relu')(x)
 
 			critic = [
-				Dense(48, activation='relu'),
-				#Dense(32, activation='relu'),
-				Dense(24, activation='relu'),
+				Dense(96, activation='relu'),
+				Dense(64, activation='relu'),
+				Dense(32, activation='relu'),
+				Dense(12, activation='relu'),
 				Dense(1, activation='linear'),
 			]
 
@@ -140,22 +141,25 @@ class slitherBot:
 		#d = Dropout(0.2)(d)
 		V = define_multilayer_critic(d)
 
+		out = V	
+
 		def flat(d,V):
 			d = Dense(96, activation='relu')(Lambda(K.concatenate)([d,V]))
 			d = Dense(32, activation='relu')( d ) 
-			d = Dense(24, activation='relu')( d ) 
 			d = Dense(16, activation='relu')( d ) 
+			d = Dense(8, activation='relu')( d ) 
 
 			return Dense(self.action_size, activation='linear')(d)
 
-		A = flat(d,V)
+		#A = flat(d,V)
 
 
-		def outp(x):
+		"""def outp(x):
 			u  = (x[1] - K.mean(x[1]))
 			#return x[0] * x[1] * K.sign(x[0])
 			return u + x[0] #+ x[2]
 		out = Lambda(outp, output_shape = (self.action_size,))([A, V])
+		"""
 		m = Model(input=self.state_input ,output = out)
 		m.summary()
 		m.compile(loss='mse',optimizer=Adam(lr=self.learning_rate))
@@ -217,7 +221,7 @@ class slitherBot:
 				print(f)
 				f = open(dr + f,"rb")
 				pack = pickle.load(f)
-				self.prioratized_replay( 512, 2, pack )
+				self.prioratized_replay( 512, 3, pack )
 				f.close()
 		self.recordIntoFiles = irc
 
@@ -283,7 +287,7 @@ if __name__ == "__main__":
 	e = environment()
 	agent = slitherBot()
 	##replaying recorded
-	for f in range(3): agent.replay_recorded()
+	for f in range(1): agent.replay_recorded()
 
 	## starting webpage and game
 	e.start()
