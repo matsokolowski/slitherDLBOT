@@ -107,7 +107,7 @@ class slitherBot:
 				Dense(256, activation='relu'),
 				Dense(128, activation='relu'),
 				Dense(32, activation='relu'),
-				Dense(16, activation='relu'),
+				Dense(12, activation='relu'),
 				Dense(1, activation='linear'),
 			]
 
