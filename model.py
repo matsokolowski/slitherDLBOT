@@ -49,12 +49,14 @@ class slitherBot:
 		self.build_vision_model()
 		self.Q1 = self.build_duelingQ_model()
 
-		if os.path.isfile("Q.weights"):
-			self.Q1.set_weights( pickle.load(open("Q.weights","rb")) )
-			print("model successfuly loaded.")
-		else:
-			print("loading model failed.")
-			self.save()
+		try:
+			if os.path.isfile("Q.weights"):
+				self.Q1.set_weights( pickle.load(open("Q.weights","rb")) )
+				print("model successfuly loaded.")
+			else:
+				print("loading model failed.")
+				self.save()
+		except: pass
 
 		if self.dual:
 			self.Q2 = self.build_duelingQ_model()
@@ -95,29 +97,39 @@ class slitherBot:
 
 	def save(self):
 		#self.vision_model.save('vision.h5')
-		pickle.dump(self.Q1.get_weights(),open("Q.weights","wb"))
+		pickle.dump(self.Q1.get_weights(),open("weights/Q.weights","wb"))
 
 	def build_duelingQ_model(self):
 
-		def define_multilayer_critic(x):
-			#with souble critic; 128 - 1st; 32 - 2ed good performance
-			#x = Dense(96, activation='relu')(x)
+		def define_multilayer_critic(i):
 
 			critic = [
+				Dense(384, activation='relu'),
 				Dense(256, activation='relu'),
-				Dense(128, activation='relu'),
-				Dense(32, activation='relu'),
-				Dense(12, activation='relu'),
-				Dense(1, activation='linear'),
+				( Dense(16, activation='relu'), Dense(16, activation='relu') ),
+				( Dense(1, activation='linear'), Dense(1, activation='linear') ),
 			]
-
+			
 			def buildcritic(x):
-				for r in range(len(critic)): x = critic[r](x)
-				return x
+				x = critic[0](x)
+				x = critic[1](x)
+				#x = critic[2](x)
+
+				x, y = critic[2][0](x), critic[2][1](x)
+
+				x = critic[3][0](x)
+				y = critic[3][1](y)
+
+				#x = critic[4][0](x)
+				#y = critic[4][1](y)
+
+
+				return x,y
 
 			l = []
+			n = []
 
-			s = K.int_shape(x)[1]
+			s = K.int_shape(i)[1]
 			for a in range(self.action_size):
 
 				z = np.ones(self.action_size * 2)
@@ -130,37 +142,25 @@ class slitherBot:
 				z[ a * 2 ] = 0.0
 				z = np.tile(z,int(s/len(z))+1)[:s].reshape(1,s)
 
-				b = Lambda(lambda x: K.constant(z) * x * K.constant(M) + K.constant(Mv) )(x)
+				b = Lambda(lambda x: K.constant(z) * x * K.constant(M) + K.constant(Mv) )(i)
 
-				l.append( buildcritic(b) )
-			return Concatenate()(l)
+				x = buildcritic(b)
+				l.append(x[0])
+				n.append(x[1])
+
+			return Concatenate()(l), Concatenate()(n)
 
 		I = self.vision_model
-
-		d = Dense(384, activation='relu')(I)
-		#d = Dropout(0.2)(d)
-		V = define_multilayer_critic(d)
-
-		out = V	
-
-		"""
-		def flat(d,V):
-			d = Dense(96, activation='relu')(Lambda(K.concatenate)([d,V]))
-			d = Dense(32, activation='relu')( d ) 
-			d = Dense(16, activation='relu')( d ) 
-			d = Dense(8, activation='relu')( d ) 
-
-			return Dense(self.action_size, activation='linear')(d)
-		"""
-		#A = define_multilayer_critic(d)
+		d = Dense(512, activation='relu')(I)
+		d = Dense(448, activation='relu')(d)
+		V, A = define_multilayer_critic(d)
 
 
-		#def outp(x):
-		#	u  = (x[0] - K.mean(x[0]))
-		#	#return x[0] * x[1] * K.sign(x[0])
-		#	return u + x[1] #+ x[2]
-		#out = Lambda(outp, output_shape = (self.action_size,))([A, V])
-		
+		def outp(x):
+			u  = (x[0] - K.mean(x[0]))
+			return u + x[1] 
+		out = Lambda(outp, output_shape = (self.action_size,))([A, V])
+
 		m = Model(input=self.state_input ,output = out)
 		m.summary()
 		m.compile(loss='mse',optimizer=Adam(lr=self.learning_rate))
@@ -215,15 +215,23 @@ class slitherBot:
 			self.epsilon *= self.epsilon_decay
 
 	def replay_recorded(self):
+		a = pickle.load(open('bestscores.pk',"rb"))[:100]
+		np.random.shuffle(a)
+
 		irc = self.recordIntoFiles
 		self.recordIntoFiles = False
-		for dr, dirs, files in os.walk("./recorded/"): 
-			for f in files[::-1]:
-				print(f)
-				f = open(dr + f,"rb")
+
+
+		l = len(a)
+
+		for (f,s),i in zip(a,range(l)):
+			print("%d/%d - %d" % (i,l,s),f)
+			try: 
+				f = open(f,"rb")
 				pack = pickle.load(f)
-				self.prioratized_replay( 512, 3, pack )
-				f.close()
+			except: continue
+			self.prioratized_replay( 512, 3, pack )
+			f.close()
 		self.recordIntoFiles = irc
 
 	def prioratized_replay(self,size = 512, ntimes = 10, pack = False):
@@ -273,7 +281,7 @@ class slitherBot:
 
 			s = np.squeeze(states,axis=1)
 
-			#self.Q1.fit(s, targets_f , batch_size = 200, epochs = 4,shuffle=True,sample_weight = (diff + 1))
+			#self.Q1.fit(s, targets_f , batch_size = 200, epochs = 1,shuffle=True,sample_weight = (diff + 1))
 			self.Q1.fit(s, targets_f , batch_size = 200, epochs = 1,shuffle=True)
 
 
@@ -288,7 +296,7 @@ if __name__ == "__main__":
 	e = environment()
 	agent = slitherBot()
 	##replaying recorded
-	for f in range(1): agent.replay_recorded()
+	for f in range(3): agent.replay_recorded()
 
 	## starting webpage and game
 	e.start()
