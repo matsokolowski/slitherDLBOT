@@ -51,7 +51,7 @@ class slitherBot:
 
 		try:
 			if os.path.isfile("Q.weights"):
-				self.Q1.set_weights( pickle.load(open("Q.weights","rb")) )
+				self.Q1.set_weights( pickle.load(open("weights/Q.weights","rb")) )
 				print("model successfuly loaded.")
 			else:
 				print("loading model failed.")
@@ -105,15 +105,16 @@ class slitherBot:
 
 			critic = [
 				Dense(384, activation='relu'),
-				Dense(256, activation='relu'),
+				#Dense(192, activation='relu'),
+				Dense(64, activation='relu'), # Dense(128, activation='relu'),
 				( Dense(16, activation='relu'), Dense(16, activation='relu') ),
 				( Dense(1, activation='linear'), Dense(1, activation='linear') ),
 			]
 			
 			def buildcritic(x):
 				x = critic[0](x)
+				#x = critic[1](x)
 				x = critic[1](x)
-				#x = critic[2](x)
 
 				x, y = critic[2][0](x), critic[2][1](x)
 
@@ -152,7 +153,6 @@ class slitherBot:
 
 		I = self.vision_model
 		d = Dense(512, activation='relu')(I)
-		d = Dense(448, activation='relu')(d)
 		V, A = define_multilayer_critic(d)
 
 
@@ -296,7 +296,7 @@ if __name__ == "__main__":
 	e = environment()
 	agent = slitherBot()
 	##replaying recorded
-	for f in range(3): agent.replay_recorded()
+	for f in range(10): agent.replay_recorded()
 
 	## starting webpage and game
 	e.start()
