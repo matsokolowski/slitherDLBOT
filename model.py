@@ -105,22 +105,21 @@ class slitherBot:
 
             critic = [
                 Dense(384, activation='relu'),
-                #Dense(192, activation='relu'),
-                Dense(128, activation='relu'), 
-                Dense(96, activation='relu'),
+                Dense(256, activation='relu'), 
+                Dense(32, activation='relu'), # <-remove for old performance
                 ( Dense(16, activation='relu'), Dense(16, activation='relu') ),
                 ( Dense(1, activation='linear'), Dense(1, activation='linear') ),
             ]
             
             def buildcritic(x):
                 x = critic[0](x)
-                #x = critic[1](x)
                 x = critic[1](x)
+                x = critic[2](x)
+                
+                x, y = critic[3][0](x), critic[3][1](x)
 
-                x, y = critic[2][0](x), critic[2][1](x)
-
-                x = critic[3][0](x)
-                y = critic[3][1](y)
+                x = critic[4][0](x)
+                y = critic[4][1](y)
 
                 #x = critic[4][0](x)
                 #y = critic[4][1](y)
@@ -294,11 +293,8 @@ class slitherBot:
         self.memory.append(e)
 
 if __name__ == "__main__":
-
     e = environment()
     agent = slitherBot()
-    ##replaying recorded
-    for f in range(10): agent.replay_recorded()
 
     ## starting webpage and game
     e.start()
@@ -375,8 +371,9 @@ if __name__ == "__main__":
                 
                 # train the netwoek
                 if agent.dual: agent.fitQ2()
-                agent.prioratized_replay()
-                agent.save()
+                if len(agent.memory) > 900:
+                    agent.prioratized_replay()
+                    agent.save()
 
                 # starting the bot
                 print ("starting", agent.epsilon)
