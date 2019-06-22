@@ -107,8 +107,8 @@ class slitherBot:
                 Dense(384, activation='relu'),
                 Dense(96, activation='relu'), 
                 #Dense(48, activation='relu'), # <-remove for old performance
-                ( Dense(16, activation='relu'), Dense(16, activation='relu') ),# <-remove for old performance
-                ( Dense(4, activation='relu'), Dense(4, activation='relu') ),
+                ( Dense(32, activation='relu'), Dense(32, activation='relu') ),# <-remove for old performance
+                ( Dense(8, activation='relu'), Dense(8, activation='relu') ),
                 ( Dense(1, activation='linear'), Dense(1, activation='linear') ),
             ]
             
