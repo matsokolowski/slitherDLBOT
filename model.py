@@ -105,21 +105,22 @@ class slitherBot:
 
             critic = [
                 Dense(384, activation='relu'),
-                Dense(256, activation='relu'), 
-                Dense(32, activation='relu'), # <-remove for old performance
-                ( Dense(16, activation='relu'), Dense(16, activation='relu') ),
+                Dense(96, activation='relu'), 
+                #Dense(48, activation='relu'), # <-remove for old performance
+                ( Dense(16, activation='relu'), Dense(16, activation='relu') ),# <-remove for old performance
+                ( Dense(4, activation='relu'), Dense(4, activation='relu') ),
                 ( Dense(1, activation='linear'), Dense(1, activation='linear') ),
             ]
             
             def buildcritic(x):
                 x = critic[0](x)
                 x = critic[1](x)
-                x = critic[2](x)
+                #x = critic[2](x)
                 
-                x, y = critic[3][0](x), critic[3][1](x)
+                x, y = critic[2][0](x), critic[2][1](x)
+                x, y = critic[3][0](x), critic[3][1](y)
+                x, y = critic[4][0](x), critic[4][1](y)
 
-                x = critic[4][0](x)
-                y = critic[4][1](y)
 
                 #x = critic[4][0](x)
                 #y = critic[4][1](y)
@@ -153,6 +154,7 @@ class slitherBot:
 
         I = self.vision_model
         d = Dense(512, activation='relu')(I)
+        #d = Dense(256, activation='relu')(d)
         V, A = define_multilayer_critic(d)
 
 
@@ -215,7 +217,7 @@ class slitherBot:
             self.epsilon *= self.epsilon_decay
 
     def replay_recorded(self):
-        a = pickle.load(open('bestscores.pk',"rb"))[:50]
+        a = pickle.load(open('bestscores.pk',"rb"))[:80]
         np.random.shuffle(a)
 
         irc = self.recordIntoFiles
@@ -230,7 +232,7 @@ class slitherBot:
                 f = open(f,"rb")
                 pack = pickle.load(f)
             except: continue
-            self.prioratized_replay( 512, 3, pack )
+            self.prioratized_replay( 512, 2, pack )
             f.close()
         self.recordIntoFiles = irc
 
