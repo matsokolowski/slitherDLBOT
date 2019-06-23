@@ -34,7 +34,7 @@ class slitherBot:
         self.epsilon_min = 0.015
         self.epsilon_decay = 0.96
         #self.learning_rate = 0.00025
-        self.learning_rate = 0.000001
+        self.learning_rate = 0.00001
         self.action_size = 9
         self.fitqueue = []
         
@@ -104,10 +104,10 @@ class slitherBot:
         def define_multilayer_critic(i):
 
             critic = [
-                Dense(384, activation='relu'),
-                Dense(96, activation='relu'), 
+                Dense(256, activation='relu'),
+                Dense(64, activation='relu'), 
                 #Dense(48, activation='relu'), # <-remove for old performance
-                ( Dense(32, activation='relu'), Dense(32, activation='relu') ),# <-remove for old performance
+                ( Dense(24, activation='relu'), Dense(32, activation='relu') ),# <-remove for old performance
                 ( Dense(8, activation='relu'), Dense(8, activation='relu') ),
                 ( Dense(1, activation='linear'), Dense(1, activation='linear') ),
             ]
@@ -153,7 +153,7 @@ class slitherBot:
             return Concatenate()(l), Concatenate()(n)
 
         I = self.vision_model
-        d = Dense(512, activation='relu')(I)
+        d = Dense(384, activation='relu')(I)
         #d = Dense(256, activation='relu')(d)
         V, A = define_multilayer_critic(d)
 
