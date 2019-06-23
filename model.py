@@ -104,22 +104,22 @@ class slitherBot:
         def define_multilayer_critic(i):
 
             critic = [
-                Dense(256, activation='relu'),
-                Dense(64, activation='relu'), 
+                Dense(256, activation='relu'), #- former 256
+                #Dense(196, activation='relu'), #- former 64
                 #Dense(48, activation='relu'), # <-remove for old performance
-                ( Dense(24, activation='relu'), Dense(32, activation='relu') ),# <-remove for old performance
-                ( Dense(8, activation='relu'), Dense(8, activation='relu') ),
+                ( Dense(48, activation='relu'), Dense(48, activation='relu') ),# <-remove for old performance
+                ( Dense(16, activation='relu'), Dense(16, activation='relu') ),
                 ( Dense(1, activation='linear'), Dense(1, activation='linear') ),
             ]
             
             def buildcritic(x):
                 x = critic[0](x)
-                x = critic[1](x)
+                #x = critic[1](x)
                 #x = critic[2](x)
                 
-                x, y = critic[2][0](x), critic[2][1](x)
+                x, y = critic[1][0](x), critic[1][1](x)
+                x, y = critic[2][0](x), critic[2][1](y)
                 x, y = critic[3][0](x), critic[3][1](y)
-                x, y = critic[4][0](x), critic[4][1](y)
 
 
                 #x = critic[4][0](x)
