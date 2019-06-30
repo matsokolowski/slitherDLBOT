@@ -34,7 +34,7 @@ class slitherBot:
         self.epsilon_min = 0.015
         self.epsilon_decay = 0.96
         #self.learning_rate = 0.00025
-        self.learning_rate = 0.00001
+        self.learning_rate = 0.000001
         self.action_size = 9
         self.fitqueue = []
         
@@ -50,7 +50,7 @@ class slitherBot:
         self.Q1 = self.build_duelingQ_model()
 
         try:
-            if os.path.isfile("Q.weights"):
+            if os.path.isfile("weights/Q.weights"):
                 self.Q1.set_weights( pickle.load(open("weights/Q.weights","rb")) )
                 print("model successfuly loaded.")
             else:
@@ -74,7 +74,6 @@ class slitherBot:
                 self.m_T = random.sample(range(r),1)[0]
             else: self.m_i += 1
             return self.m_l
-
         act_values = self.Q1.predict(state)
         #print(act_values)
         return np.argmax(act_values[0])
@@ -104,22 +103,23 @@ class slitherBot:
         def define_multilayer_critic(i):
 
             critic = [
-                Dense(256, activation='relu'), #- former 256
-                #Dense(196, activation='relu'), #- former 64
+                Dense(256, activation='relu'),#Dense(256, use_bias=False), #- former 256
+                Dense(192, activation='relu'), #- former 64
                 #Dense(48, activation='relu'), # <-remove for old performance
-                ( Dense(48, activation='relu'), Dense(48, activation='relu') ),# <-remove for old performance
-                ( Dense(16, activation='relu'), Dense(16, activation='relu') ),
+                ( Dense(32, activation='relu'), Dense(32, activation='relu') ),# <-remove for old performance
+                ( Dense(24, activation='relu'), Dense(24, activation='relu') ),
                 ( Dense(1, activation='linear'), Dense(1, activation='linear') ),
             ]
             
             def buildcritic(x):
                 x = critic[0](x)
-                #x = critic[1](x)
+                x = critic[1](x)
                 #x = critic[2](x)
                 
-                x, y = critic[1][0](x), critic[1][1](x)
-                x, y = critic[2][0](x), critic[2][1](y)
+                #x, y =  critic[2][0](x) , critic[2][1](x) 
+                x, y = critic[2][0](x), critic[2][1](x) 
                 x, y = critic[3][0](x), critic[3][1](y)
+                x, y = critic[4][0](x), critic[4][1](x) 
 
 
                 #x = critic[4][0](x)
@@ -154,7 +154,7 @@ class slitherBot:
 
         I = self.vision_model
         d = Dense(384, activation='relu')(I)
-        #d = Dense(256, activation='relu')(d)
+        #d = Dense(320, activation='relu')(d)
         V, A = define_multilayer_critic(d)
 
 
@@ -217,7 +217,7 @@ class slitherBot:
             self.epsilon *= self.epsilon_decay
 
     def replay_recorded(self):
-        a = pickle.load(open('bestscores.pk',"rb"))[:80]
+        a = pickle.load(open('bestscores.pk',"rb"))[:150]
         np.random.shuffle(a)
 
         irc = self.recordIntoFiles
@@ -236,15 +236,17 @@ class slitherBot:
             f.close()
         self.recordIntoFiles = irc
 
-    def prioratized_replay(self,size = 512, ntimes = 10, pack = False):
+    def prioratized_replay(self,size = 512, ntimes = 5, pack = False):
         try:
             states, actions, rewards, next_states, dones = pack = \
                 pack or [ np.array(x) for x in zip(*self.memory) ]
         except: return
-
-        if self.recordIntoFiles and ( self.recordAnchor.tolist() not in states.tolist() ):
-            pickle.dump(pack,open( "recorded/%s.pk" % time.time(),"wb"))
-            self.recordAnchor = states[-1]
+        
+        if self.recordIntoFiles :        
+            if self.recordAnchor.tolist() not in states.tolist():
+                pickle.dump(pack,open( "recorded/%s.pk" % time.time(),"wb"))
+                self.recordAnchor = states[-1]
+            else: return
 
         chunk = 512
         #next time try batch 50
@@ -352,7 +354,6 @@ if __name__ == "__main__":
             states.append( [state, action, '0', '0', rr > 0, ] )
 
             if len(states) < delay : continue
-
             states[-4][2] = reward
             states[-2][3] = state
 
