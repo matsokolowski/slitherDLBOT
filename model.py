@@ -20,6 +20,23 @@ si =  lambda x: x/(1+abs(x))
 
 bnormed_relu = lambda x: Activation("relu")(BatchNormalization()(x))
 
+def crop(dimension, start, end):
+    # Crops (or slices) a Tensor on a given dimension from start to end
+    # example : to crop tensor x[:, :, 5:10]
+    # call slice(2, 5, 10) as you want to crop on the second dimension
+    def func(x):
+        if dimension == 0:
+            return x[start: end]
+        if dimension == 1:
+            return x[:, start: end]
+        if dimension == 2:
+            return x[:, :, start: end]
+        if dimension == 3:
+            return x[:, :, :, start: end]
+        if dimension == 4:
+            return x[:, :, :, :, start: end]
+    return Lambda(func)
+
 class slitherBot:
     def __init__(self):
 
@@ -85,13 +102,13 @@ class slitherBot:
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
         x = Conv2D(32, (4, 4), activation="relu")(x)
-        x = Conv2D(64, (4, 4), activation="relu")(x)
+        x = Conv2D(48, (4, 4), activation="relu")(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
-        x = Conv2D(64, (4, 4), activation="relu")(x)
-        x = MaxPooling2D(pool_size=(2, 2))(x)
+        x = Conv2D(48, (4, 4), activation="relu")(x)
+      #  x = MaxPooling2D(pool_size=(2, 2))(x)
 
-        output = Flatten()(x)        
+        output = x # Flatten()(x)        
         self.vision_model = output
 
     def save(self):
@@ -153,8 +170,28 @@ class slitherBot:
             return Concatenate()(l), Concatenate()(n)
 
         I = self.vision_model
-        d = Dense(384, activation='relu')(I)
+
+        CapsuleLayer = Dense(64, activation='relu')
+
+        #capsule = lambda x: CapsuleLayer(Flatten(x)),
+        cropedInputVerticly = []
+        cropedInput = []
+
+        for x in range(0,9,3):
+            cropper = crop(1,x,x+3)
+            c = cropper(I)
+            cropedInputVerticly.append(c)
+
+        for x in range(0,9,3):
+            cropper = crop(2,x,x+3)
+            for y in cropedInputVerticly:
+                cropedInput.append( cropper(y) ) 
+       
+        capsules = Concatenate()([ CapsuleLayer( Flatten()(x) ) for x in cropedInput ])
+
+        d = Dense(384, activation='relu')(capsules)
         #d = Dense(320, activation='relu')(d)
+        #d = capsules
         V, A = define_multilayer_critic(d)
 
 
@@ -222,7 +259,6 @@ class slitherBot:
 
         irc = self.recordIntoFiles
         self.recordIntoFiles = False
-
 
         l = len(a)
 
