@@ -171,7 +171,8 @@ class slitherBot:
 
         I = self.vision_model
 
-        CapsuleLayer = Dense(64, activation='relu')
+        CapsuleLayer = Dense(128, activation='relu')
+        CapsuleLayer1 = Dense(64, activation='relu')
 
         #capsule = lambda x: CapsuleLayer(Flatten(x)),
         cropedInputVerticly = []
@@ -187,11 +188,11 @@ class slitherBot:
             for y in cropedInputVerticly:
                 cropedInput.append( cropper(y) ) 
        
-        capsules = Concatenate()([ CapsuleLayer( Flatten()(x) ) for x in cropedInput ])
+        capsules = Concatenate()([ CapsuleLayer1( CapsuleLayer( Flatten()(x) ) ) for x in cropedInput ])
 
-        d = Dense(384, activation='relu')(capsules)
+        #d = Dense(384, activation='relu')(capsules)
         #d = Dense(320, activation='relu')(d)
-        #d = capsules
+        d = capsules
         V, A = define_multilayer_critic(d)
 
 
