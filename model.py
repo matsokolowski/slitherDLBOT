@@ -51,7 +51,7 @@ class slitherBot:
         self.epsilon_min = 0.015
         self.epsilon_decay = 0.96
         #self.learning_rate = 0.00025
-        self.learning_rate = 0.000001
+        self.learning_rate = 0.00001
         self.action_size = 9
         self.fitqueue = []
         
@@ -102,12 +102,12 @@ class slitherBot:
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
         x = Conv2D(32, (4, 4), activation="relu")(x)
-        x = Conv2D(48, (4, 4), activation="relu")(x)
+        x = Conv2D(32, (4, 4), activation="relu")(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
-        x = Conv2D(48, (4, 4), activation="relu")(x)
-      #  x = MaxPooling2D(pool_size=(2, 2))(x)
-
+        #x = Conv2D(24, (3, 3), activation="relu")(x)
+        #x = MaxPooling2D(pool_size=(2, 2))(x)
+        print ()
         output = x # Flatten()(x)        
         self.vision_model = output
 
@@ -156,7 +156,7 @@ class slitherBot:
 
                 MOnes = np.ones(s - self.action_size)
                 M = np.concatenate((MOnes, m)).reshape(1,s) ## <- mask
-                m[a] = 1.0
+                m[a] = 5.0
                 Mv = np.concatenate((MOnes*0, m)).reshape(1,s) ## <- value
                 z[ a * 2 ] = 0.0
                 z = np.tile(z,int(s/len(z))+1)[:s].reshape(1,s)
@@ -171,8 +171,8 @@ class slitherBot:
 
         I = self.vision_model
 
-        CapsuleLayer = Dense(128, activation='relu')
-        CapsuleLayer1 = Dense(64, activation='relu')
+        CapsuleLayer = Dense(48, activation='relu')
+        CapsuleLayer1 = Dense(32, activation='relu')
 
         #capsule = lambda x: CapsuleLayer(Flatten(x)),
         cropedInputVerticly = []
@@ -190,9 +190,9 @@ class slitherBot:
        
         capsules = Concatenate()([ CapsuleLayer1( CapsuleLayer( Flatten()(x) ) ) for x in cropedInput ])
 
-        #d = Dense(384, activation='relu')(capsules)
+        d = Dense(384, activation='relu')(capsules)
         #d = Dense(320, activation='relu')(d)
-        d = capsules
+        #d = capsules
         V, A = define_multilayer_critic(d)
 
 
