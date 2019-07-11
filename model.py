@@ -51,7 +51,7 @@ class slitherBot:
         self.epsilon_min = 0.015
         self.epsilon_decay = 0.96
         #self.learning_rate = 0.00025
-        self.learning_rate = 0.00001
+        self.learning_rate = 0.000001
         self.action_size = 9
         self.fitqueue = []
         
@@ -171,10 +171,10 @@ class slitherBot:
 
         I = self.vision_model
 
-        CapsuleLayer = Dense(48, activation='relu')
-        CapsuleLayer1 = Dense(32, activation='relu')
+        CapsuleLayer = Dense(64, activation='relu')
+        #CapsuleLayer1 = Dense(32, activation='relu')
 
-        #capsule = lambda x: CapsuleLayer(Flatten(x)),
+        ##capsule = lambda x: CapsuleLayer(Flatten(x)),
         cropedInputVerticly = []
         cropedInput = []
 
@@ -188,9 +188,25 @@ class slitherBot:
             for y in cropedInputVerticly:
                 cropedInput.append( cropper(y) ) 
        
-        capsules = Concatenate()([ CapsuleLayer1( CapsuleLayer( Flatten()(x) ) ) for x in cropedInput ])
+        capsules = list([ CapsuleLayer( Flatten()(x) ) for x in cropedInput ])
+        capsules = np.array(capsules).reshape((3,3))
 
-        d = Dense(384, activation='relu')(capsules)
+        capsuleLayer_2 = Dense(96, activation='relu')
+ 
+        slices = [
+            capsules[:2, :2],
+            capsules[1:3, :2],
+            capsules[:2, 1:3],
+            capsules[1:3, 1:3],
+        ] 
+        outputs = []
+        for x in slices:
+            x = list( x.flatten() )
+            x = Concatenate()( x )
+            outputs.append(capsuleLayer_2(x))
+
+        d = Concatenate()(outputs)
+        #d = Dense(384, activation='relu')(capsules)
         #d = Dense(320, activation='relu')(d)
         #d = capsules
         V, A = define_multilayer_critic(d)
@@ -255,7 +271,7 @@ class slitherBot:
             self.epsilon *= self.epsilon_decay
 
     def replay_recorded(self):
-        a = pickle.load(open('bestscores.pk',"rb"))[:150]
+        a = pickle.load(open('bestscores.pk',"rb"))[:300]
         np.random.shuffle(a)
 
         irc = self.recordIntoFiles
