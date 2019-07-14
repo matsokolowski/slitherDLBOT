@@ -54,7 +54,7 @@ class slitherBot:
         self.learning_rate = 0.000001
         self.action_size = 9
         self.fitqueue = []
-        
+        self.trained = False
         self.dual = False
 
         self.m_i = 0
@@ -209,7 +209,7 @@ class slitherBot:
         winHeight = 2
         croppersX = [ crop(1,x, x + winHeight) for x in range( K.int_shape(I)[1] - winHeight + 1) ]
         croppersY = [ crop(2,x, x + winHeight) for x in range( K.int_shape(I)[2] - winHeight + 1) ]
-        Layer = Dense(64, activation='relu') 
+        Layer = Dense(96, activation='relu') 
         windows = [[],]
         for x in croppersX:
             for y in croppersY:
@@ -291,7 +291,7 @@ class slitherBot:
             self.epsilon *= self.epsilon_decay
 
     def replay_recorded(self):
-        a = pickle.load(open('bestscores.pk',"rb"))[:300]
+        a = pickle.load(open('bestscores.pk',"rb"))[:150]
         np.random.shuffle(a)
 
         irc = self.recordIntoFiles
@@ -299,26 +299,30 @@ class slitherBot:
 
         l = len(a)
 
-        for (f,s),i in zip(a,range(l)):
+        for (f,s),i in zip(sorted(a,lambda x: x[0]),range(l)):
             print("%d/%d - %d" % (i,l,s),f)
             try: 
                 f = open(f,"rb")
                 pack = pickle.load(f)
             except: continue
-            self.prioratized_replay( 512, 2, pack )
+            self.prioratized_replay( 512, 7s, pack )
             f.close()
         self.recordIntoFiles = irc
 
-    def prioratized_replay(self,size = 512, ntimes = 5, pack = False):
+    def prioratized_replay(self,size = 512, ntimes = 10, pack = False):
         try:
             states, actions, rewards, next_states, dones = pack = \
                 pack or [ np.array(x) for x in zip(*self.memory) ]
         except: return
         
         if self.recordIntoFiles :        
-            if self.recordAnchor.tolist() not in states.tolist():
+            i = states.tobytes().find(self.recordAnchor.tobytes())
+            if i < 0:
                 pickle.dump(pack,open( "recorded/%s.pk" % time.time(),"wb"))
                 self.recordAnchor = states[-1]
+                self.trained = False
+            elif  i / len(states.tobytes()) < 0.4 and not self.trained:
+                self.trained = True
             else: return
 
         chunk = 512
@@ -384,6 +388,9 @@ if __name__ == "__main__":
     
     delay = 5
     states = deque(maxlen=delay)
+    def restart():
+        e.initpage()
+        e.start()
 
     while True:
         retries = 0
@@ -391,8 +398,7 @@ if __name__ == "__main__":
             e.action(1)
             time.sleep(1)
             if retries > 10:
-                e.initpage()
-                e.start()
+                restart()
                 retries = 0
             retries +=1
 
@@ -438,13 +444,12 @@ if __name__ == "__main__":
 
             if rr == 0:
                 #roll death back
-                try:
-                    for x in range(10):
-                        agent.memory.pop()
-                except: continue
+                #try:
+                #    for x in range(10):
+                #        agent.memory.pop()
+                #except: continue
                 states.clear()
                 agent.memory[-1] = agent.memory[-1][:2] + (rr,) + agent.memory[-1][3:]
-                
                 # train the netwoek
                 if agent.dual: agent.fitQ2()
                 if len(agent.memory) > 900:
@@ -453,7 +458,7 @@ if __name__ == "__main__":
 
                 # starting the bot
                 print ("starting", agent.epsilon)
-                e.start()
+                restart()
                 e.points = 0
                 rr = 1
                 break

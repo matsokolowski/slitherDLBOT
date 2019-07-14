@@ -59,6 +59,10 @@ class environment:
 
         cv2.startWindowThread()
         cv2.namedWindow("slither-prev")
+
+        self.framediff = deque(maxlen=4)
+        self.lastframe = np.zeros(shape=(8,8,1))
+
         self.driver.set_window_size(600, 600)
         self.initpage()
         self.__start_capture()
@@ -131,6 +135,10 @@ class environment:
             r,f =  self.ffmpeg.read()
             if r:
                 cv2.imshow("slither-prev",f)
+                f_slice = f[:8,:8]
+                self.framediff.append(np.sum(np.abs(self.lastframe - f_slice)))
+                self.lastframe = f_slice
+
             return f.reshape((1,)+self.fshape)
         #while True:
         #    print ("getting frame ", end='\r')
@@ -153,6 +161,9 @@ class environment:
         if action == 8.0: action = 0
         if int(accel) and np.random.rand(1)[0] < 0.333:
             return 8, score
+        if len(self.framediff) == self.framediff.maxlen:
+            if np.sum(self.framediff)  < 10000: 
+               score = 0 
         return action, score
 
     def action(self,a,s = 8):
@@ -165,6 +176,8 @@ class environment:
         
 
     def score(self):
+        if len(self.framediff) == self.framediff.maxlen:
+            if np.sum(self.framediff)  < 10000: return 0 
         if int(self.points) > 0: return self.points
         try:
             return self.driver.execute_script("return window.getscore()") or "10"
