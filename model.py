@@ -1,5 +1,5 @@
 import keras
-from keras.layers import Input, Dense, Conv2D, MaxPooling2D,MaxPooling1D,AveragePooling1D, Dropout, Flatten,Reshape, LeakyReLU , Subtract,Add,Average,add,subtract,average,Lambda,GaussianNoise,RepeatVector,Multiply,Concatenate,BatchNormalization,Activation
+from keras.layers import Input, Dense, Conv2D, MaxPooling2D,MaxPooling1D,AveragePooling1D, Dropout,AveragePooling2D, Flatten,Reshape, LeakyReLU , Subtract,Add,Average,add,subtract,average,Lambda,GaussianNoise,RepeatVector,Multiply,Concatenate,BatchNormalization,Activation
 from keras.models import Sequential
 from keras import backend as K, Model
 from keras.callbacks import TensorBoard
@@ -102,12 +102,13 @@ class slitherBot:
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
         x = Conv2D(32, (4, 4), activation="relu")(x)
-        x = Conv2D(32, (4, 4), activation="relu")(x)
+        x = Conv2D(48, (4, 4), activation="relu")(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
-        #x = Conv2D(24, (3, 3), activation="relu")(x)
-        #x = MaxPooling2D(pool_size=(2, 2))(x)
-        print ()
+        x = Conv2D(64, (3, 3), activation="relu")(x)
+        x = AveragePooling2D(pool_size=(2, 2))(x)
+
+        print ( K.int_shape(x) )
         output = x # Flatten()(x)        
         self.vision_model = output
 
@@ -120,8 +121,8 @@ class slitherBot:
         def define_multilayer_critic(i):
 
             critic = [
-                Dense(256, activation='relu'),#Dense(256, use_bias=False), #- former 256
-                Dense(192, activation='relu'), #- former 64
+                Dense(384, activation='relu'),#Dense(256, use_bias=False), #- former 256
+                Dense(256, activation='relu'), #- former 64
                 #Dense(48, activation='relu'), # <-remove for old performance
                 ( Dense(32, activation='relu'), Dense(32, activation='relu') ),# <-remove for old performance
                 ( Dense(24, activation='relu'), Dense(24, activation='relu') ),
@@ -171,10 +172,8 @@ class slitherBot:
 
         I = self.vision_model
 
+        """
         CapsuleLayer = Dense(64, activation='relu')
-        #CapsuleLayer1 = Dense(32, activation='relu')
-
-        ##capsule = lambda x: CapsuleLayer(Flatten(x)),
         cropedInputVerticly = []
         cropedInput = []
 
@@ -191,7 +190,7 @@ class slitherBot:
         capsules = list([ CapsuleLayer( Flatten()(x) ) for x in cropedInput ])
         capsules = np.array(capsules).reshape((3,3))
 
-        capsuleLayer_2 = Dense(96, activation='relu')
+        capsuleLayer_2 = Dense(128, activation='relu')
  
         slices = [
             capsules[:2, :2],
@@ -200,15 +199,36 @@ class slitherBot:
             capsules[1:3, 1:3],
         ] 
         outputs = []
+        
         for x in slices:
             x = list( x.flatten() )
             x = Concatenate()( x )
             outputs.append(capsuleLayer_2(x))
-
         d = Concatenate()(outputs)
-        #d = Dense(384, activation='relu')(capsules)
-        #d = Dense(320, activation='relu')(d)
-        #d = capsules
+        """
+        winHeight = 2
+        croppersX = [ crop(1,x, x + winHeight) for x in range( K.int_shape(I)[1] - winHeight + 1) ]
+        croppersY = [ crop(2,x, x + winHeight) for x in range( K.int_shape(I)[2] - winHeight + 1) ]
+        Layer = Dense(64, activation='relu') 
+        windows = [[],]
+        for x in croppersX:
+            for y in croppersY:
+                d = Layer( Flatten()( y(x(I)) ) )
+                windows[-1].append( d )
+            windows.append([])
+
+        winHeight = 2
+        slicesX = [ windows[x: x + winHeight] for x in range( len(windows) - winHeight + 1) ]
+        slicesXY = []
+        for x in slicesX:
+            for y in range( len(x[1]) - winHeight + 1 ):
+                slicesXY.append(np.array(x)[:,y: y+2].flatten().tolist())
+        
+        Layer2 = Dense(96, activation='relu') 
+
+        d = list([ Layer2( Concatenate()(x) ) for x in slicesXY ])
+        d = Concatenate()( d )
+        #print("concatenated",K.int_shape(d))
         V, A = define_multilayer_critic(d)
 
 
