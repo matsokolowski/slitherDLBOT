@@ -101,11 +101,11 @@ class slitherBot:
         x = Conv2D(32, (4, 4), activation="relu")(self.state_input)
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
-        x = Conv2D(32, (4, 4), activation="relu")(x)
+        x = Conv2D(48, (4, 4), activation="relu")(x)
         x = Conv2D(48, (4, 4), activation="relu")(x)
         x = MaxPooling2D(pool_size=(2, 2))(x)
 
-        x = Conv2D(64, (3, 3), activation="relu")(x)
+        x = Conv2D(64, (4, 4), activation="relu")(x)
         x = AveragePooling2D(pool_size=(2, 2))(x)
 
         print ( K.int_shape(x) )
@@ -209,14 +209,15 @@ class slitherBot:
         winHeight = 2
         croppersX = [ crop(1,x, x + winHeight) for x in range( K.int_shape(I)[1] - winHeight + 1) ]
         croppersY = [ crop(2,x, x + winHeight) for x in range( K.int_shape(I)[2] - winHeight + 1) ]
-        Layer = Dense(96, activation='relu') 
+
+        Layer = Dense(64, activation='relu') 
         windows = [[],]
         for x in croppersX:
             for y in croppersY:
                 d = Layer( Flatten()( y(x(I)) ) )
                 windows[-1].append( d )
             windows.append([])
-
+        """
         winHeight = 2
         slicesX = [ windows[x: x + winHeight] for x in range( len(windows) - winHeight + 1) ]
         slicesXY = []
@@ -225,9 +226,11 @@ class slitherBot:
                 slicesXY.append(np.array(x)[:,y: y+2].flatten().tolist())
         
         Layer2 = Dense(96, activation='relu') 
+        """
 
-        d = list([ Layer2( Concatenate()(x) ) for x in slicesXY ])
+        d = sum(windows,[])
         d = Concatenate()( d )
+        d = Dense(512, activation='relu')(d)
         #print("concatenated",K.int_shape(d))
         V, A = define_multilayer_critic(d)
 
@@ -299,13 +302,13 @@ class slitherBot:
 
         l = len(a)
 
-        for (f,s),i in zip(sorted(a,lambda x: x[0]),range(l)):
+        for (f,s),i in zip(sorted(a,key = lambda x: x[1],reverse=False),range(l)):
             print("%d/%d - %d" % (i,l,s),f)
             try: 
                 f = open(f,"rb")
                 pack = pickle.load(f)
             except: continue
-            self.prioratized_replay( 512, 7s, pack )
+            self.prioratized_replay( 512, 4, pack )
             f.close()
         self.recordIntoFiles = irc
 

@@ -163,7 +163,7 @@ class environment:
             return 8, score
         if len(self.framediff) == self.framediff.maxlen:
             if np.sum(self.framediff)  < 10000: 
-               score = 0 
+               score = 0.1
         return action, score
 
     def action(self,a,s = 8):
