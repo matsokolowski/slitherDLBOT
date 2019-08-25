@@ -21,4 +21,4 @@ python train.py
 sh run.sh
 ```
 
-Video: https://www.youtube.com/watch?v=AIefCUjm24w
+## Video: https://youtu.be/BoZk81DrpoA
